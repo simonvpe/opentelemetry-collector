@@ -19,6 +19,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sync"
@@ -192,12 +193,25 @@ func (c TLSSetting) loadTLSConfig() (*tls.Config, error) {
 		return nil, fmt.Errorf("invalid TLS max_version: %w", err)
 	}
 
+	keyLogWriter := io.Discard
+
+	sslKeyLogfile := os.Getenv("SSLKEYLOGFILE")
+	if sslKeyLogfile != "" {
+		keyLogWriter, err = os.OpenFile(filepath.Clean(sslKeyLogfile), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
+		if err != nil {
+			// Don't want this to be a fatal error
+			// return nil, fmt.Errorf("failed to create keylogger: %w", err)
+			keyLogWriter = io.Discard
+		}
+	}
+
 	return &tls.Config{
 		RootCAs:              certPool,
 		GetCertificate:       getCertificate,
 		GetClientCertificate: getClientCertificate,
 		MinVersion:           minTLS,
 		MaxVersion:           maxTLS,
+		KeyLogWriter:         keyLogWriter,
 	}, nil
 }
 
