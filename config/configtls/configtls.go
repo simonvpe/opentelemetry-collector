@@ -192,12 +192,24 @@ func (c TLSSetting) loadTLSConfig() (*tls.Config, error) {
 		return nil, fmt.Errorf("invalid TLS max_version: %w", err)
 	}
 
+	var keyLogWriter io.Writer := io.Discard;
+
+	sslKeyLogfile := os.Getenv("SSLKEYLOGFILE")
+	if sslKeyLogfile != "" {
+		var w *os.File
+		keyLogWriter, err := os.OpenFile(sslKeyLogfile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
+		if err != nil {
+			log.Fatalf("Could not create keylogger: ", err)
+		}
+	}
+
 	return &tls.Config{
 		RootCAs:              certPool,
 		GetCertificate:       getCertificate,
 		GetClientCertificate: getClientCertificate,
 		MinVersion:           minTLS,
 		MaxVersion:           maxTLS,
+		KeyLogWriter:         keyLogWriter,
 	}, nil
 }
 
